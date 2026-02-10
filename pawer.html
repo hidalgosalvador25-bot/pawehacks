@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FRAYAS NAVALES | SYSTEM OVERRIDE</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Teko:wght@500;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --neon-green: #0f0;
+            --neon-red: #ff003c;
+            --neon-blue: #00f3ff;
+            --neon-gold: #ffd700;
+            --bg-color: #020202;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            background-color: var(--bg-color);
+            color: var(--neon-green);
+            font-family: 'Share Tech Mono', monospace;
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* --- FONDO DE UGO DINÁMICO --- */
+        #ugo-layer {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: url('ugo_pawer.png') no-repeat center bottom;
+            background-size: 80vh; /* Tamaño grande */
+            opacity: 0.1;
+            z-index: 1;
+            transition: all 0.3s cubic-bezier(0.68, -0.55, 0.27, 1.55);
+            filter: drop-shadow(0 0 10px rgba(0, 255, 0, 0.2));
+        }
+
+        /* ESTADOS DE UGO */
+        body.mode-alert #ugo-layer {
+            opacity: 0.8;
+            transform: scale(1.15);
+            filter: drop-shadow(0 0 30px red) grayscale(100%) sepia(100%) hue-rotate(-50deg) saturate(600%);
+            animation: glitch-skew 0.3s infinite;
+        }
+
+        body.mode-win #ugo-layer {
+            opacity: 0.3;
+            transform: scale(1.0);
+            filter: drop-shadow(0 0 30px var(--neon-gold)) brightness(1.5);
+        }
+
+        /* --- CONTENEDOR TERMINAL --- */
+        .terminal-wrapper {
+            position: relative;
+            z-index: 10;
+            width: 95%;
+            max-width: 900px;
+            height: 85vh;
+            border: 1px solid rgba(0, 255, 0, 0.3);
+            background: rgba(0, 5, 0, 0.85);
+            box-shadow: 0 0 50px rgba(0, 255, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        body.mode-alert .terminal-wrapper {
+            border-color: var(--neon-red);
+            box-shadow: 0 0 50px rgba(255, 0, 60, 0.4);
+            animation: shake 0.5s infinite;
+        }
+
+        /* --- CABECERA --- */
+        header {
+            background: rgba(0, 255, 0, 0.1);
+            padding: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--neon-green);
+        }
+        
+        body.mode-alert header { background: rgba(255, 0, 0, 0.2); border-color: var(--neon-red); }
+
+        h1 {
+            font-family: 'Teko', sans-serif;
+            margin: 0;
+            font-size: 2rem;
+            letter-spacing: 2px;
+            color: var(--neon-green);
+            text-transform: uppercase;
+        }
+        body.mode-alert h1 { color: var(--neon-red); text-shadow: 0 0 10px red; }
+
+        /* --- ÁREA DE CÓDIGO --- */
+        #console-output {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            font-size: 1rem;
+            text-shadow: 0 0 2px var(--neon-green);
+        }
+        
+        /* Ocultar scrollbar */
+        #console-output::-webkit-scrollbar { display: none; }
+
+        .log-line { margin-bottom: 5px; display: block; word-wrap: break-word; }
+        
+        /* Colores de Texto */
+        .c-green { color: var(--neon-green); }
+        .c-blue { color: var(--neon-blue); font-weight: bold; }
+        .c-red { color: var(--neon-red); font-weight: bold; text-shadow: 0 0 5px red; font-size: 1.1em;}
+        .c-gold { color: var(--neon-gold); font-weight: bold; font-size: 1.4em; text-shadow: 0 0 10px orange; }
+        .c-dim { color: #444; }
+
+        /* --- BARRA DE PROGRESO --- */
+        .progress-container {
+            width: 100%;
+            height: 5px;
+            background: #111;
+            margin-top: auto;
+        }
+        .progress-bar {
+            height: 100%;
+            width: 0%;
+            background: var(--neon-green);
+            transition: width 0.1s;
+            box-shadow: 0 0 10px var(--neon-green);
+        }
+        body.mode-alert .progress-bar { background: var(--neon-red); box-shadow: 0 0 15px red; }
+
+        /* --- EFECTOS CRT Y SCANLINES (OVERLAY) --- */
+        .scanlines {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            background-size: 100% 3px, 3px 100%;
+            pointer-events: none;
+            z-index: 100;
+        }
+        .crt-flicker {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(255, 255, 255, 0.02);
+            opacity: 0;
+            z-index: 99;
+            pointer-events: none;
+            animation: flicker 0.1s infinite;
+        }
+
+        /* --- ANIMACIONES --- */
+        @keyframes shake {
+            0% { transform: translate(1px, 1px) rotate(0deg); }
+            10% { transform: translate(-1px, -2px) rotate(-0.5deg); }
+            20% { transform: translate(-3px, 0px) rotate(0.5deg); }
+            30% { transform: translate(3px, 2px) rotate(0deg); }
+            40% { transform: translate(1px, -1px) rotate(0.5deg); }
+            50% { transform: translate(-1px, 2px) rotate(-0.5deg); }
+            60% { transform: translate(-3px, 1px) rotate(0deg); }
+            100% { transform: translate(1px, -2px) rotate(-0.5deg); }
+        }
+        @keyframes glitch-skew {
+            0% { transform: skew(0deg); }
+            20% { transform: skew(-10deg); filter: hue-rotate(90deg); }
+            40% { transform: skew(10deg); }
+            60% { transform: skew(-5deg); filter: invert(1); }
+            80% { transform: skew(5deg); }
+            100% { transform: skew(0deg); }
+        }
+        @keyframes flicker { 0% { opacity: 0.01; } 50% { opacity: 0.05; } 100% { opacity: 0.01; } }
+
+    </style>
+</head>
+<body id="main-body">
+
+    <div id="ugo.png."></div>
+    <div class="scanlines"></div>
+    <div class="crt-flicker"></div>
+
+    <div class="terminal-wrapper">
+        <header>
+            <h1 id="header-title">PAW3R_OS v9.8</h1>
+            <div style="font-size: 0.8rem;">NET: <span style="color:var(--neon-green)">ONLINE</span></div>
+        </header>
+        
+        <div id="console-output"></div>
+
+        <div class="progress-container">
+            <div class="progress-bar" id="prog-bar"></div>
+        </div>
+    </div>
+
+    <script>
+        const output = document.getElementById('console-output');
+        const progBar = document.getElementById('prog-bar');
+        const body = document.getElementById('main-body');
+        const title = document.getElementById('header-title');
+
+        // Función de sonido visual (Texto tiembla)
+        const textShake = "display:inline-block; animation: shake 0.2s infinite;";
+
+        const sequence = [
+            // FASE 1: INFILTRACIÓN (Tecnología IA)
+            { text: "INICIANDO PROTOCOLO 'FRAYAS NAVALES'...", speed: 30, color: "c-green" },
+            { text: "> Conectando API Neural...", speed: 20, color: "c-dim" },
+            { text: "> Entrenando modelo en tiempo real...", speed: 20, color: "c-dim" },
+            { text: "> Buscando stock: 20 GORRAS DISPONIBLES HOY.", speed: 40, color: "c-blue" },
+            { text: ">>> VULNERABILIDAD ENCONTRADA EN SECTOR 7G.", speed: 30, color: "c-green", progress: 20 },
+            
+            // FASE 2: DETECCIÓN (Ugo se despierta)
+            { text: "...", speed: 500, color: "c-dim" },
+            { text: "⚠️ ANOMALÍA DETECTADA.", speed: 50, color: "c-red" },
+            { text: "⚠️ EL SISTEMA 'UGO' ESTÁ RESPONDIENDO.", speed: 50, color: "c-red", action: "alert" },
+            { text: ">> AI_SENTINEL: '¿Quién se atreve a tocar mi sistema?'", speed: 60, color: "c-red" },
+            { text: ">> INICIANDO CONTRAMEDIDAS DE BLOQUEO.", speed: 40, color: "c-red", progress: 40 },
+
+            // FASE 3: BATALLA DE CÓDIGO
+            { text: "> ¡NO MANO, ESTE ES MI MOMENTO!", speed: 30, color: "c-blue" },
+            { text: "> Desplegando Script: 'PAWER_VIBE_OVERRIDE.py'", speed: 20, color: "c-green" },
+            { text: "> Bypass de Firewall con Algoritmo Genético...", speed: 10, color: "c-green" },
+            { text: "[================----] DECRIFANDO...", speed: 10, color: "c-blue" },
+            { text: "> UGO está furioso. Intentando borrar usuario...", speed: 40, color: "c-red" },
+            { text: "> BLOQUEO FALLIDO. MI CÓDIGO ES MÁS FRAO.", speed: 30, color: "c-green", progress: 70 },
+            
+            // FASE 4: CLÍMAX
+            { text: ">> ERROR CRÍTICO EN LA MATRIZ.", speed: 20, color: "c-red" },
+            { text: ">> RE-ESCRIBIENDO PROPIETARIO DE LA GORRA...", speed: 50, color: "c-blue" },
+            { text: "10101011001 PAW3R 001100 FRAYAS 1100 NAVALES", speed: 5, color: "c-dim" },
+            
+            // FASE 5: VICTORIA
+            { text: "✅ ACCESO ADMINISTRADOR CONCEDIDO.", speed: 50, color: "c-gold", action: "win", progress: 100 },
+            { text: "-------------------------------------", speed: 10, color: "c-green" },
+            { text: "GANADOR VERIFICADO POR LA IA:", speed: 50, color: "c-green" },
+            { text: "@SALV4BG", speed: 100, color: "c-gold", style: "font-size: 3rem; letter-spacing: 5px; text-shadow: 4px 4px red;" },
+            { text: "-------------------------------------", speed: 10, color: "c-green" },
+            { text: "MENSAJE DEL SISTEMA:", speed: 30, color: "c-green" },
+            { text: "'Ugo, ya controlé el sistema. La telemática ganó. Suelta la gorra.'", speed: 50, color: "c-green" },
+            { text: ">>> SYSTEM LOGOUT. VIVA FINO. 🧢🔥", speed: 50, color: "c-blue" }
+        ];
+
+        async function typeWriter(txt, speed, colorClass, style = "") {
+            const div = document.createElement('div');
+            div.className = `log-line ${colorClass}`;
+            if(style) div.style = style;
+            output.appendChild(div);
+
+            // Escribir letra por letra
+            for (let i = 0; i < txt.length; i++) {
+                div.textContent += txt.charAt(i);
+                // Scroll automático al fondo
+                output.scrollTop = output.scrollHeight;
+                await new Promise(r => setTimeout(r, Math.random() * speed));
+            }
+        }
+
+        async function runSequence() {
+            for (const step of sequence) {
+                // Actualizar barra de progreso si existe
+                if (step.progress) {
+                    progBar.style.width = step.progress + "%";
+                }
+
+                // Ejecutar acciones visuales (Alertas)
+                if (step.action === "alert") {
+                    body.classList.add('mode-alert');
+                    title.innerText = "¡¡ BREACH DETECTED !!";
+                }
+                if (step.action === "win") {
+                    body.classList.remove('mode-alert');
+                    body.classList.add('mode-win');
+                    title.innerText = "HACK SUCCESSFUL";
+                    title.style.color = "var(--neon-gold)";
+                }
+
+                await typeWriter(step.text, step.speed, step.color, step.style);
+                
+                // Pequeña pausa entre líneas
+                await new Promise(r => setTimeout(r, 300));
+            }
+        }
+
+        // Iniciar después de 1 segundo
+        setTimeout(runSequence, 1000);
+
+    </script>
+</body>
+</html>
